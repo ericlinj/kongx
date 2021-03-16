@@ -2,7 +2,7 @@ spring:
   application:
     name: kongserve
   profiles:
-    active: @activatedProfile@
+    active: dev
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
     type: com.alibaba.druid.pool.DruidDataSource
