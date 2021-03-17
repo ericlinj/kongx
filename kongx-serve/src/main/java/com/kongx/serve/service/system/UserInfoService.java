@@ -76,6 +76,9 @@ public class UserInfoService implements IBaseService<UserInfoVO, String> {
         }
         return Optional.ofNullable(wrapChildren(this.userInfoMapper.findMenuByUserId(userInfo.getUserId(), menuType, systemProfile), parentId, menuType));
     }
+    public Optional findServiceByUserId(String userId, SystemProfile systemProfile) {
+        return Optional.ofNullable((this.userInfoMapper.findServiceByUserId(userId, systemProfile)));
+    }
 
     private List<Menu> wrapChildren(List<Menu> systemFunctions, Integer parentId, String menuType) {
         if ("point".equalsIgnoreCase(menuType)) {

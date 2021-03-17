@@ -72,7 +72,7 @@ public class SystemProfileService extends AbstractCacheService {
             for (Map env : envs) {
                 List<Map> profile = (List<Map>) env.get("groups");
                 for (Map map : profile) {
-                    if (result.getProfile().equals(map.get("label").toString())) {
+                    if (result.getProfile().equals(map.get("profile").toString())) {
                         systemProfiles.add(result);
                     }
                 }
@@ -91,7 +91,7 @@ public class SystemProfileService extends AbstractCacheService {
             List<SystemProfile> systemProfileList = new ArrayList<>();
             for (Map map : profile) {
                 for (SystemProfile result : results) {
-                    if (result.getProfile().equals(map.get("label").toString())) {
+                    if (result.getProfile().equals(map.get("profile").toString())) {
                         systemProfileList.add(result);
                     }
                 }

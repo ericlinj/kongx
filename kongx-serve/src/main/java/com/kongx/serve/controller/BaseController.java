@@ -32,12 +32,22 @@ public abstract class BaseController<T> {
         return this.systemProfileService.getClientByName(userInfo.getUserId());
     }
 
-    protected void log(UserInfo userInfo, OperationLog.OperationType operationType, OperationLog.OperationTarget operationTarget, Object content, HttpServletRequest request) {
+    protected Boolean isAdmin(UserInfo info) {
+        if (info == null || info.getUserId() == null) {
+            return false;
+        }
+        return "admin".equalsIgnoreCase(info.getUserId());
+    }
+
+
+    protected void log(UserInfo userInfo, OperationLog.OperationType operationType,
+                       OperationLog.OperationTarget operationTarget, Object content, HttpServletRequest request) {
         OperationLog operationLog = to(userInfo, operationType, operationTarget, content, WebUtil.getClientIp(request));
         this.logService.log(systemProfile(userInfo), operationLog);
     }
 
-    private OperationLog to(UserInfo userInfo, OperationLog.OperationType operationType, OperationLog.OperationTarget operationTarget, Object content, String ip) {
+    private OperationLog to(UserInfo userInfo, OperationLog.OperationType operationType,
+                            OperationLog.OperationTarget operationTarget, Object content, String ip) {
         OperationLog operationLog = new OperationLog();
         SystemProfile systemProfile = this.systemProfile(userInfo);
         operationLog.setUserId(userInfo.getUserId());
@@ -48,14 +58,17 @@ public abstract class BaseController<T> {
         operationLog.setIp(ip);
         operationLog.setContent(content);
 
-        operationLog.setRemark(String.format("%s %s %s", operationLog.getCreator(), operationType.getRemark(), operationTarget.getTarget()));
+        operationLog.setRemark(String.format("%s %s %s", operationLog.getCreator(), operationType.getRemark(),
+                operationTarget.getTarget()));
         return operationLog;
     }
 
-    protected void log(UserInfo userInfo, OperationLog.OperationType operationType, OperationLog.OperationTarget operationTarget, Object content, String remark
+    protected void log(UserInfo userInfo, OperationLog.OperationType operationType,
+                       OperationLog.OperationTarget operationTarget, Object content, String remark
             , HttpServletRequest request) {
         OperationLog operationLog = to(userInfo, operationType, operationTarget, content, WebUtil.getClientIp(request));
-        operationLog.setRemark(String.format("%s %s %s %s", operationLog.getCreator(), operationType.getRemark(), operationTarget.getTarget(), remark));
+        operationLog.setRemark(String.format("%s %s %s %s", operationLog.getCreator(), operationType.getRemark(),
+                operationTarget.getTarget(), remark));
         this.logService.log(systemProfile(userInfo), operationLog);
     }
 }

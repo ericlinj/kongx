@@ -124,16 +124,18 @@
 
 
     <logger name="com.kongx.serve.mapper" level="debug" addtivity="false">
-        <appender-ref ref="${prjName}_mapper"/>
+        <!--<appender-ref ref="${prjName}_mapper"/>-->
+        <appender-ref ref="console"/>
     </logger>
 
     <logger name="com.kongx" level="debug" additivity="false">
-        <appender-ref ref="${prjName}_busi"/>
+        <!--<appender-ref ref="${prjName}_busi"/>-->
+        <appender-ref ref="console"/>
     </logger>
 
     <root level="INFO">
         <appender-ref ref="console"/>
-        <appender-ref ref="${prjName}_error"/>
-        <appender-ref ref="${prjName}_busi"/>
+        <!--<appender-ref ref="${prjName}_error"/>-->
+        <!--<appender-ref ref="${prjName}_busi"/>-->
     </root>
 </configuration>

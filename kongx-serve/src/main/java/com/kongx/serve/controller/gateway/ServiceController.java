@@ -12,9 +12,13 @@ import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.service.gateway.PluginService;
 import com.kongx.serve.service.gateway.ServiceService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URISyntaxException;
+import java.net.*;
 
 @RestController("/ServiceController")
 @RequestMapping("/kong/api/")
@@ -41,7 +45,9 @@ public class ServiceController extends BaseController {
     public JsonHeaderWrapper findAll(UserInfo userInfo) {
         JsonHeaderWrapper jsonHeaderWrapper = this.init();
         try {
-            KongEntity<Service> upstreamKongEntity = kongFeignService.findAll(systemProfile(userInfo));
+            KongEntity<Service> upstreamKongEntity =
+                    this.isAdmin(userInfo) ? kongFeignService.findAll(systemProfile(userInfo)) :
+                            kongFeignService.findAllByUser(userInfo.getUserId(), systemProfile(userInfo));
             jsonHeaderWrapper.setData(upstreamKongEntity.getData());
         } catch (Exception e) {
             jsonHeaderWrapper.setStatus(JsonHeaderWrapper.StatusEnum.Failed.getCode());
@@ -51,11 +57,13 @@ public class ServiceController extends BaseController {
     }
 
     @RequestMapping(value = SERVICE_URI_ID_PLUGIN_PATH, method = {RequestMethod.POST})
-    public JsonHeaderWrapper findAllPlugin(UserInfo userInfo, @PathVariable String serviceId, @RequestBody SystemProfile systemProfile) {
+    public JsonHeaderWrapper findAllPlugin(UserInfo userInfo, @PathVariable String serviceId,
+                                           @RequestBody SystemProfile systemProfile) {
         JsonHeaderWrapper jsonHeaderWrapper = this.init();
         try {
             SystemProfile activeClient = this.systemProfile(userInfo);
-            KongEntity<PluginVO> pluginVOKongEntity = pluginService.findAllPluginByService(systemProfile.IS_NULL() ? activeClient : systemProfile, serviceId);
+            KongEntity<PluginVO> pluginVOKongEntity = pluginService
+                    .findAllPluginByService(systemProfile.IS_NULL() ? activeClient : systemProfile, serviceId);
             jsonHeaderWrapper.setData(pluginVOKongEntity.getData());
         } catch (Exception e) {
             jsonHeaderWrapper.setStatus(JsonHeaderWrapper.StatusEnum.Failed.getCode());
@@ -95,7 +103,8 @@ public class ServiceController extends BaseController {
      */
     @RequestMapping(value = SERVICE_URI_ID_PATH, method = RequestMethod.POST)
     @KongLog(target = OperationLog.OperationTarget.SERVICE, content = "#service")
-    public JsonHeaderWrapper update(UserInfo userInfo, @PathVariable String id, @RequestBody Service service) throws URISyntaxException {
+    public JsonHeaderWrapper update(UserInfo userInfo, @PathVariable String id, @RequestBody Service service)
+            throws URISyntaxException {
         JsonHeaderWrapper jsonHeaderWrapper = this.init();
         try {
             Service results = this.kongFeignService.update(systemProfile(userInfo), id, service.trim());

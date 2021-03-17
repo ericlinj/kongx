@@ -29,7 +29,7 @@ public class GroupRoleService {
             Map map = new HashMap();
             map.put("groupId", groupId);
             map.put("roleId", roleId);
-            map.put("profile", systemProfile.get("label"));
+            map.put("profile", systemProfile.get("profile"));
             maps.add(map);
         }));
         return maps;

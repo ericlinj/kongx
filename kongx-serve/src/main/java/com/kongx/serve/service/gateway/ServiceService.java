@@ -1,23 +1,30 @@
 package com.kongx.serve.service.gateway;
 
 import com.kongx.common.cache.CacheResults;
-import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.entity.gateway.KongEntity;
 import com.kongx.serve.entity.gateway.Service;
+import com.kongx.serve.entity.system.RoleServiceEntity;
+import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.feign.KongFeignService;
 import com.kongx.serve.feign.ServiceFeignService;
 import com.kongx.serve.service.AbstractCacheService;
+import com.kongx.serve.service.system.UserInfoService;
 import feign.Feign;
 import feign.Target;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClientsConfiguration;
 import org.springframework.context.annotation.Import;
 
-import java.net.URISyntaxException;
+import java.net.*;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @org.springframework.stereotype.Service("serviceService")
@@ -25,6 +32,7 @@ import java.util.Collections;
 public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
     private static final String CACHE_SERVICES_KEY = "LISTS";
     private static final String SERVICE_URI = "/services";
+    private static final String SERVICE_URI_QUERY_1000 = "/services?size=1000";//应该够了
     private static final String SERVICE_URI_ID = "/services/%s";
     private static final String SERVICE_ROUTE_URI_ID = "/routes/%s/service";
     private static final String SERVICE_PLUGIN_URI_ID = "/plugins/%s/service";
@@ -32,8 +40,12 @@ public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
     private KongFeignService<Service> kongFeignService;
 
     @Autowired
+    private UserInfoService userInfoService;
+
+    @Autowired
     public ServiceService(Decoder decoder, Encoder encoder) {
-        kongFeignService = Feign.builder().encoder(encoder).decoder(decoder).target(Target.EmptyTarget.create(ServiceFeignService.class));
+        kongFeignService = Feign.builder().encoder(encoder).decoder(decoder)
+                .target(Target.EmptyTarget.create(ServiceFeignService.class));
     }
 
     /**
@@ -43,7 +55,37 @@ public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
      * @throws URISyntaxException
      */
     public KongEntity<Service> findAll(SystemProfile systemProfile) {
-        return this.get(systemProfile, CACHE_SERVICES_KEY).getData();
+        KongEntity<Service> list = this.get(systemProfile, CACHE_SERVICES_KEY).getData();
+        return list;
+    }
+
+    /**
+     * 支持rbac的service查询
+     *
+     * @param userId
+     * @param systemProfile
+     * @return
+     */
+    public KongEntity<Service> findAllByUser(String userId, SystemProfile systemProfile) {
+        KongEntity<Service> list = this.get(systemProfile, CACHE_SERVICES_KEY).getData();
+        KongEntity<Service> filteredKongServices = new KongEntity<>();
+        filteredKongServices.setNext(list.getNext());
+        filteredKongServices.setData(new ArrayList<>());
+        //add by lg 数据角色过滤，基于userId+profile配置的service
+        if (StringUtils.isNotBlank(userId) && StringUtils.isNotBlank(systemProfile.getProfile())) {
+            List<String> ownServices = new ArrayList<>();
+            Optional<List<RoleServiceEntity>> optional =
+                    this.userInfoService.findServiceByUserId(userId, systemProfile);
+            optional.get().stream().forEach((s ->
+                    ownServices.add(s.getService())
+            ));
+            for (Service ss : list.getData()) {
+                if (ownServices.contains(ss.getName())) {
+                    filteredKongServices.getData().add(ss);
+                }
+            }
+        }
+        return filteredKongServices;
     }
 
     /**
@@ -113,8 +155,16 @@ public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
     @Override
     protected CacheResults<KongEntity<Service>> loadFromClient(KongCacheKey key) throws URISyntaxException {
         log.info("Loading Services {} from kong client!", key);
-        KongEntity<Service> kongEntity = this.kongFeignService.findAll(uri(key.getSystemProfile(), SERVICE_URI));
-        Collections.sort(kongEntity.getData());
+        KongEntity<Service> kongEntity =
+                this.kongFeignService.findAll(uri(key.getSystemProfile(), SERVICE_URI_QUERY_1000));
+        List<Service> kongServices = kongEntity.getData();
+        Collections.sort(kongServices, new Comparator<Service>() {
+            @Override
+            public int compare(Service o1, Service o2) {
+                return o1.getName().compareToIgnoreCase(o2.getName());
+            }
+        });
+        kongEntity.setData(kongServices);
         CacheResults<KongEntity<Service>> cacheResults = new CacheResults();
         cacheResults.setData(kongEntity);
         return cacheResults;

@@ -82,6 +82,12 @@ public interface UserInfoMapper {
             ") ORDER BY b.sort_order", "</script>"})
     List<Menu> findMenuByUserId(@Param("userId") String userId, @Param("menuType") String menuType, @Param("profile") SystemProfile systemProfile);
 
+    @Select({"<script>SELECT * from kongx_system_role_service where role_id in (SELECT DISTINCT(kugr.role_id) FROM kongx_user_group_user kugu, kongx_user_group_role kugr, kongx_system_role ksr  " +
+            "WHERE kugu.user_id = #{userId} AND kugu.group_id = kugr.group_id  " +
+            "AND kugr.role_id = ksr.id  AND ksr.role_type = 'data'  " +
+            "AND use_yn = 'y') and `profile` = #{profile.profile};</script>"})
+    List<RoleServiceEntity> findServiceByUserId(@Param("userId") String userId, @Param("profile") SystemProfile systemProfile);
+
     @Select("select count(role_id) from kongx_user_group_role ur where  ur.`profile`=#{profile.profile} and  exists(select t.id from kongx_user_group_user t where ur.group_id=t.group_id and t.user_id=#{userId})")
     int countAuthorityRole(String userId, @Param("profile") SystemProfile systemProfile);
 
