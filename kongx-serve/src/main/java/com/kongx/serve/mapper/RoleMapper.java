@@ -1,9 +1,17 @@
 package com.kongx.serve.mapper;
 
 import com.github.pagehelper.Page;
+import com.kongx.serve.entity.system.RoleServiceEntity;
 import com.kongx.serve.entity.system.SystemRole;
 import com.kongx.serve.entity.system.SystemRoleFunction;
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -46,6 +54,9 @@ public interface RoleMapper {
     @Delete("delete from kongx_system_role_function where role_id=#{id}")
     int deleteRoleMenu(int id);
 
+    @Delete("delete from kongx_system_role_service where role_id=#{id}")
+    int deleteRoleService(int id);
+
     @Insert({"<script>",
             "insert into kongx_system_role_function(role_id,function_id,half_checked) values",
             "<foreach collection='menus' item='param' index='index' separator=','>",
@@ -54,8 +65,17 @@ public interface RoleMapper {
             , "</script>"})
     int batchInsertRoleMenu(@Param("menus") List<SystemRoleFunction> menus);
 
+    @Insert({"<script>",
+            "INSERT INTO `kongx_serve`.`kongx_system_role_service`(`role_id`, `service`, `profile`) VALUES ",
+            "<foreach collection='roleServiceEntries' item='param' index='index' separator=','>",
+            " (#{param.roleId}, #{param.service},#{param.profile} )",
+            "</foreach>"
+            , "</script>"})
+    int batchInsertRoleService(@Param("roleServiceEntries") List<RoleServiceEntity> roleServiceEntries);
+
     @Select("select function_id from kongx_system_role_function where role_id=#{id} and half_checked='n'")
     List<String> findMenuByRoleId(int id);
 
-
+    @Select("select * from kongx_system_role_service where role_id=#{id}")
+    List<RoleServiceEntity> findServiceByRoleId(int id);
 }
