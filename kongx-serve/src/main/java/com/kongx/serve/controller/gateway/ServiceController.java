@@ -11,6 +11,7 @@ import com.kongx.serve.entity.system.OperationLog;
 import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.service.gateway.PluginService;
 import com.kongx.serve.service.gateway.ServiceService;
+import com.kongx.serve.service.system.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.*;
+import java.util.List;
 
 @RestController("/ServiceController")
 @RequestMapping("/kong/api/")
@@ -34,6 +36,8 @@ public class ServiceController extends BaseController {
 
     @Autowired
     private PluginService pluginService;
+    @Autowired
+    private RoleService roleService;
 
     /**
      * 查询所有SERVICE
@@ -84,7 +88,9 @@ public class ServiceController extends BaseController {
     public JsonHeaderWrapper add(UserInfo userInfo, @RequestBody Service service) {
         JsonHeaderWrapper jsonHeaderWrapper = this.init();
         try {
-            Service results = this.kongFeignService.add(systemProfile(userInfo), service.trim());
+            SystemProfile systemProfile = systemProfile(userInfo);
+            Service results = this.kongFeignService.add(systemProfile, service.trim());
+            addRoleData(userInfo, systemProfile, service.getName());
             jsonHeaderWrapper.setData(results);
         } catch (Exception e) {
             jsonHeaderWrapper.setStatus(JsonHeaderWrapper.StatusEnum.Failed.getCode());
@@ -92,6 +98,8 @@ public class ServiceController extends BaseController {
         }
         return jsonHeaderWrapper;
     }
+
+
 
     /**
      * 更新service
@@ -103,17 +111,25 @@ public class ServiceController extends BaseController {
      */
     @RequestMapping(value = SERVICE_URI_ID_PATH, method = RequestMethod.POST)
     @KongLog(target = OperationLog.OperationTarget.SERVICE, content = "#service")
-    public JsonHeaderWrapper update(UserInfo userInfo, @PathVariable String id, @RequestBody Service service)
-            throws URISyntaxException {
+    public JsonHeaderWrapper update(UserInfo userInfo, @PathVariable String id, @RequestBody Service service) {
         JsonHeaderWrapper jsonHeaderWrapper = this.init();
         try {
-            Service results = this.kongFeignService.update(systemProfile(userInfo), id, service.trim());
+            SystemProfile systemProfile = systemProfile(userInfo);
+            Service oldService = this.kongFeignService.find(systemProfile, id);
+            updateRoleData(userInfo, systemProfile, oldService.getName(), service.getName());
+            Service results = this.kongFeignService.update(systemProfile, id, service.trim());
             jsonHeaderWrapper.setData(results);
         } catch (Exception e) {
             jsonHeaderWrapper.setStatus(JsonHeaderWrapper.StatusEnum.Failed.getCode());
             jsonHeaderWrapper.setErrmsg(e.getMessage());
         }
         return jsonHeaderWrapper;
+    }
+
+    private void updateRoleData(UserInfo userInfo, SystemProfile systemProfile, String oldServiceName,
+                                String newServiceName) {
+        this.removeRoleData(userInfo, systemProfile, oldServiceName);
+        this.addRoleData(userInfo, systemProfile, newServiceName);
     }
 
     /**
@@ -128,6 +144,9 @@ public class ServiceController extends BaseController {
     public JsonHeaderWrapper remove(UserInfo userInfo, @PathVariable String id) {
         JsonHeaderWrapper jsonHeaderWrapper = this.init();
         try {
+            SystemProfile systemProfile = systemProfile(userInfo);
+            Service service = this.kongFeignService.find(systemProfile, id);
+            removeRoleData(userInfo, systemProfile, service.getName());
             KongEntity<Service> upstreamKongEntity = this.kongFeignService.remove(systemProfile(userInfo), id);
             jsonHeaderWrapper.setData(upstreamKongEntity.getData());
         } catch (Exception e) {
@@ -136,6 +155,35 @@ public class ServiceController extends BaseController {
         }
         return jsonHeaderWrapper;
 
+    }
+
+    private void addRoleData(UserInfo userInfo, SystemProfile systemProfile, String serviceName) {
+        if(this.isAdmin(userInfo)){
+            return;
+        }
+        //对应的数据角色添加数据内容
+        List<Integer> dataRuleIds = this.roleService.findDataRuleIdsByUserId(userInfo.getUserId());
+        String profile = systemProfile.getProfile();
+        if (dataRuleIds != null && dataRuleIds.size() > 0) {
+            for (Integer roleId : dataRuleIds) {
+                this.roleService.addRoleService(roleId, serviceName, profile);
+            }
+        }
+    }
+
+    private void removeRoleData(UserInfo userInfo, SystemProfile systemProfile, String serviceName) {
+        if(this.isAdmin(userInfo)){
+            return;
+        }
+        //对应的数据角色删除数据内容
+        List<Integer> dataRuleIds = this.roleService.findDataRuleIdsByUserId(userInfo.getUserId());
+        String profile = systemProfile.getProfile();
+
+        if (dataRuleIds != null && dataRuleIds.size() > 0) {
+            for (Integer roleId : dataRuleIds) {
+                this.roleService.removeRoleService(roleId, serviceName, profile);
+            }
+        }
     }
 
     /**

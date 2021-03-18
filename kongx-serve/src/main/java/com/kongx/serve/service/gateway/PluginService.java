@@ -25,6 +25,7 @@ import java.util.Map;
 @Import(FeignClientsConfiguration.class)
 public class PluginService extends AbstractCacheService {
     private static final String PLUGIN_URI = "/plugins";
+    private static final String PLUGIN_URI_ALL = "/plugins?size=1000";
     private static final String PLUGIN_ROUTE_URI = "/routes/%s/plugins";
     private static final String PLUGIN_SERVICE_URI = "/services/%s/plugins";
     private static final String PLUGIN_CONSUMER_URI = "/consumers/%s/plugins";
@@ -55,7 +56,7 @@ public class PluginService extends AbstractCacheService {
     }
 
     public KongEntity<PluginVO> findAll(SystemProfile systemProfile) throws URISyntaxException {
-        KongEntity<PluginVO> routeKongEntity = this.pluginVOFeignService.findAll(uri(systemProfile, PLUGIN_URI));
+        KongEntity<PluginVO> routeKongEntity = this.pluginVOFeignService.findAll(uri(systemProfile, PLUGIN_URI_ALL));
         Collections.sort(routeKongEntity.getData());
         List<Route> routes = routeService.findAll(systemProfile).getData();
         List<Service> services = serviceService.findAll(systemProfile).getData();

@@ -106,6 +106,16 @@ public class RoleService implements IBaseService<SystemRole, Integer> {
         this.roleMapper.insert(entity);
     }
 
+    public void addRoleService(Integer roleId,String service,String profile) {
+        RoleServiceEntity roleServiceEntity = new RoleServiceEntity();
+        roleServiceEntity.setRoleId(roleId);
+        roleServiceEntity.setService(service);
+        roleServiceEntity.setProfile(profile);
+        List<RoleServiceEntity> list = new ArrayList<>(1);
+        list.add(roleServiceEntity);
+        this.roleMapper.batchInsertRoleService(list);
+    }
+
     @Override
     public void update(SystemRole entity, UserInfo userInfo) {
         entity.setModifier(userInfo.getName());
@@ -119,4 +129,11 @@ public class RoleService implements IBaseService<SystemRole, Integer> {
     }
 
 
+    public List<Integer> findDataRuleIdsByUserId(String userId) {
+        return this.roleMapper.findDataRuleIdsByUserId(userId);
+    }
+
+    public void removeRoleService(Integer roleId, String serviceName, String profile) {
+        this.roleMapper.removeRoleService(roleId,serviceName,profile);
+    }
 }

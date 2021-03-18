@@ -158,12 +158,12 @@ public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
         KongEntity<Service> kongEntity =
                 this.kongFeignService.findAll(uri(key.getSystemProfile(), SERVICE_URI_QUERY_1000));
         List<Service> kongServices = kongEntity.getData();
-        Collections.sort(kongServices, new Comparator<Service>() {
-            @Override
-            public int compare(Service o1, Service o2) {
-                return o1.getName().compareToIgnoreCase(o2.getName());
-            }
-        });
+//        Collections.sort(kongServices, new Comparator<Service>() {
+//            @Override
+//            public int compare(Service o1, Service o2) {
+//                return o1.getName().compareToIgnoreCase(o2.getName());
+//            }
+//        });
         kongEntity.setData(kongServices);
         CacheResults<KongEntity<Service>> cacheResults = new CacheResults();
         cacheResults.setData(kongEntity);

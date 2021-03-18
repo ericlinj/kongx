@@ -39,7 +39,6 @@ public abstract class BaseController<T> {
         return "admin".equalsIgnoreCase(info.getUserId());
     }
 
-
     protected void log(UserInfo userInfo, OperationLog.OperationType operationType,
                        OperationLog.OperationTarget operationTarget, Object content, HttpServletRequest request) {
         OperationLog operationLog = to(userInfo, operationType, operationTarget, content, WebUtil.getClientIp(request));

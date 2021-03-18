@@ -78,4 +78,18 @@ public interface RoleMapper {
 
     @Select("select * from kongx_system_role_service where role_id=#{id}")
     List<RoleServiceEntity> findServiceByRoleId(int id);
+
+    @Select("select DISTINCT(c.id) " +
+            "from " +
+            "kongx_user_group_user a, " +
+            "kongx_user_group_role b, " +
+            "kongx_system_role c " +
+            "where a.user_id = #{userId} " +
+            "and a.group_id = b.group_id " +
+            "and b.role_id = c.id " +
+            "and c.role_type = 'data'")
+    List<Integer> findDataRuleIdsByUserId(String userId);
+
+    @Delete("delete from kongx_system_role_service where role_id=#{roleId} and service=#{service} and profile=#{profile}")
+    void removeRoleService(Integer roleId, String service, String profile);
 }
