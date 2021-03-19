@@ -1,10 +1,10 @@
 package com.kongx.serve.service.gateway;
 
 import com.kongx.common.cache.CacheResults;
-import com.kongx.serve.entity.gateway.Service;
-import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.entity.gateway.KongEntity;
 import com.kongx.serve.entity.gateway.Route;
+import com.kongx.serve.entity.gateway.Service;
+import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.feign.KongFeignService;
 import com.kongx.serve.feign.RouteFeignService;
 import com.kongx.serve.service.AbstractCacheService;
@@ -13,12 +13,13 @@ import feign.Target;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClientsConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
 
-import java.net.URISyntaxException;
+import java.net.*;
 import java.util.Collections;
 
 @Slf4j
@@ -35,8 +36,13 @@ public class RouteService extends AbstractCacheService<KongEntity<Route>> {
 
     @Autowired
     public RouteService(Decoder decoder, Encoder encoder) {
-        kongFeignService = Feign.builder().encoder(encoder).decoder(decoder).target(Target.EmptyTarget.create(RouteFeignService.class));
+        kongFeignService = Feign.builder().encoder(encoder).decoder(decoder)
+                .target(Target.EmptyTarget.create(RouteFeignService.class));
     }
+
+    @Autowired
+    private ServiceService serviceService;
+
 
     /**
      * 查询所有route
@@ -48,8 +54,6 @@ public class RouteService extends AbstractCacheService<KongEntity<Route>> {
         return get(systemProfile, CACHE_ROUTES_KEY).getData();
     }
 
-    @Autowired
-    private ServiceService serviceService;
 
     /**
      * 查询所有route
@@ -61,7 +65,8 @@ public class RouteService extends AbstractCacheService<KongEntity<Route>> {
         Service service = this.serviceService.find(systemProfile, serviceId);
         KongEntity<Route> routeKongEntity = new KongEntity<>();
         if (service != null) {
-            routeKongEntity = this.kongFeignService.findAll(uri(systemProfile, String.format(ROUTE_SERVICE_URI, serviceId)));
+            routeKongEntity =
+                    this.kongFeignService.findAll(uri(systemProfile, String.format(ROUTE_SERVICE_URI, serviceId)));
         }
         Collections.sort(routeKongEntity.getData());
         return routeKongEntity;
@@ -75,7 +80,8 @@ public class RouteService extends AbstractCacheService<KongEntity<Route>> {
      * @throws URISyntaxException
      */
     public Route add(SystemProfile systemProfile, String serviceId, Route route) throws URISyntaxException {
-        Route results = this.kongFeignService.add(uri(systemProfile, String.format(ROUTE_SERVICE_URI, serviceId)), route);
+        Route results =
+                this.kongFeignService.add(uri(systemProfile, String.format(ROUTE_SERVICE_URI, serviceId)), route);
         this.refresh(systemProfile, CACHE_ROUTES_KEY);
         return results;
     }
@@ -132,9 +138,20 @@ public class RouteService extends AbstractCacheService<KongEntity<Route>> {
     @Override
     protected CacheResults<KongEntity<Route>> loadFromClient(KongCacheKey kongCacheKey) throws URISyntaxException {
         log.info("Loading Routes {} from kong client!", kongCacheKey);
-        KongEntity<Route> kongEntity = this.kongFeignService.findAll(uri(kongCacheKey.getSystemProfile(), ROUTE_URI));
-        Collections.sort(kongEntity.getData());
-        return new CacheResults<>(kongEntity);
+        KongEntity<Route> allRouteEntities = new KongEntity<>();
+        boolean hasMore = true;
+        String routeUrl = ROUTE_URI;
+        while (hasMore) {
+            KongEntity<Route> plugins = this.kongFeignService.findAll(uri(kongCacheKey.getSystemProfile(), routeUrl));
+            //最后一页的next值不变
+            if (plugins == null || StringUtils.isBlank(plugins.getNext())) {
+                hasMore = false;
+            }
+            allRouteEntities.getData().addAll(plugins.getData());
+            routeUrl = plugins.getNext();
+        }
+
+        return new CacheResults<>(allRouteEntities);
     }
 
     @Override

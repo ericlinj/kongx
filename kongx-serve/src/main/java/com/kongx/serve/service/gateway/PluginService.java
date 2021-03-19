@@ -1,6 +1,10 @@
 package com.kongx.serve.service.gateway;
 
-import com.kongx.serve.entity.gateway.*;
+import com.kongx.serve.entity.gateway.KongEntity;
+import com.kongx.serve.entity.gateway.Plugin;
+import com.kongx.serve.entity.gateway.PluginVO;
+import com.kongx.serve.entity.gateway.Route;
+import com.kongx.serve.entity.gateway.Service;
 import com.kongx.serve.entity.system.SystemProfile;
 import com.kongx.serve.feign.PluginFeignService;
 import com.kongx.serve.feign.PluginVOFeignService;
@@ -10,12 +14,13 @@ import feign.Target;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClientsConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
 
-import java.net.URISyntaxException;
+import java.net.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +30,6 @@ import java.util.Map;
 @Import(FeignClientsConfiguration.class)
 public class PluginService extends AbstractCacheService {
     private static final String PLUGIN_URI = "/plugins";
-    private static final String PLUGIN_URI_ALL = "/plugins?size=1000";
     private static final String PLUGIN_ROUTE_URI = "/routes/%s/plugins";
     private static final String PLUGIN_SERVICE_URI = "/services/%s/plugins";
     private static final String PLUGIN_CONSUMER_URI = "/consumers/%s/plugins";
@@ -42,8 +46,10 @@ public class PluginService extends AbstractCacheService {
 
     @Autowired
     public PluginService(Decoder decoder, Encoder encoder) {
-        kongFeignService = Feign.builder().encoder(encoder).decoder(decoder).target(Target.EmptyTarget.create(PluginFeignService.class));
-        pluginVOFeignService = Feign.builder().encoder(encoder).decoder(decoder).target(Target.EmptyTarget.create(PluginVOFeignService.class));
+        kongFeignService = Feign.builder().encoder(encoder).decoder(decoder)
+                .target(Target.EmptyTarget.create(PluginFeignService.class));
+        pluginVOFeignService = Feign.builder().encoder(encoder).decoder(decoder)
+                .target(Target.EmptyTarget.create(PluginVOFeignService.class));
     }
 
     public void rollback(SystemProfile systemProfile, String id, Plugin plugin) throws URISyntaxException {
@@ -56,17 +62,29 @@ public class PluginService extends AbstractCacheService {
     }
 
     public KongEntity<PluginVO> findAll(SystemProfile systemProfile) throws URISyntaxException {
-        KongEntity<PluginVO> routeKongEntity = this.pluginVOFeignService.findAll(uri(systemProfile, PLUGIN_URI_ALL));
-        Collections.sort(routeKongEntity.getData());
+        KongEntity<PluginVO> allPlugInEntities = new KongEntity<>();
+        boolean hasMore = true;
+        String pluginUrl = PLUGIN_URI;
+        while (hasMore) {
+            KongEntity<PluginVO> plugins = this.pluginVOFeignService.findAll(uri(systemProfile, pluginUrl));
+            //最后一页的next值不变
+            if (plugins == null || StringUtils.isBlank(plugins.getNext())) {
+                hasMore = false;
+            }
+            allPlugInEntities.getData().addAll(plugins.getData());
+            pluginUrl = plugins.getNext();
+        }
+
         List<Route> routes = routeService.findAll(systemProfile).getData();
         List<Service> services = serviceService.findAll(systemProfile).getData();
-        for (PluginVO plugin : routeKongEntity.getData()) {
+        for (PluginVO plugin : allPlugInEntities.getData()) {
             plugin.setApplyTo(routes, services);
         }
-        return routeKongEntity;
+        return allPlugInEntities;
     }
 
-    public KongEntity<PluginVO> findAllPluginByService(SystemProfile systemProfile, String serviceId) throws URISyntaxException {
+    public KongEntity<PluginVO> findAllPluginByService(SystemProfile systemProfile, String serviceId)
+            throws URISyntaxException {
         KongEntity<PluginVO> routeKongEntity = this.findAll(systemProfile);
         KongEntity<PluginVO> results = new KongEntity<>();
         for (PluginVO vo : routeKongEntity.getData()) {
@@ -85,26 +103,32 @@ public class PluginService extends AbstractCacheService {
             }
         }
 
-        routeKongEntity.getData().stream().filter(pluginVO -> pluginVO.getScope().equals("global")).forEach(pluginVO -> {
-            results.getData().add(pluginVO);
-        });
+        routeKongEntity.getData().stream().filter(pluginVO -> pluginVO.getScope().equals("global"))
+                .forEach(pluginVO -> {
+                    results.getData().add(pluginVO);
+                });
         return results;
     }
 
     public KongEntity<PluginVO> findAllByRoute(SystemProfile systemProfile, String routeId) throws URISyntaxException {
-        KongEntity<PluginVO> routeKongEntity = this.pluginVOFeignService.findAll(uri(systemProfile, String.format(PLUGIN_ROUTE_URI, routeId)));
+        KongEntity<PluginVO> routeKongEntity =
+                this.pluginVOFeignService.findAll(uri(systemProfile, String.format(PLUGIN_ROUTE_URI, routeId)));
         Collections.sort(routeKongEntity.getData());
         return routeKongEntity;
     }
 
-    public KongEntity<PluginVO> findAllByService(SystemProfile systemProfile, String serviceId) throws URISyntaxException {
-        KongEntity<PluginVO> routeKongEntity = this.pluginVOFeignService.findAll(uri(systemProfile, String.format(PLUGIN_SERVICE_URI, serviceId)));
+    public KongEntity<PluginVO> findAllByService(SystemProfile systemProfile, String serviceId)
+            throws URISyntaxException {
+        KongEntity<PluginVO> routeKongEntity =
+                this.pluginVOFeignService.findAll(uri(systemProfile, String.format(PLUGIN_SERVICE_URI, serviceId)));
         Collections.sort(routeKongEntity.getData());
         return routeKongEntity;
     }
 
-    public KongEntity<PluginVO> findAllByConsumer(SystemProfile systemProfile, String serviceId) throws URISyntaxException {
-        KongEntity<PluginVO> routeKongEntity = this.pluginVOFeignService.findAll(uri(systemProfile, String.format(PLUGIN_CONSUMER_URI, serviceId)));
+    public KongEntity<PluginVO> findAllByConsumer(SystemProfile systemProfile, String serviceId)
+            throws URISyntaxException {
+        KongEntity<PluginVO> routeKongEntity =
+                this.pluginVOFeignService.findAll(uri(systemProfile, String.format(PLUGIN_CONSUMER_URI, serviceId)));
         Collections.sort(routeKongEntity.getData());
         return routeKongEntity;
     }
@@ -121,7 +145,8 @@ public class PluginService extends AbstractCacheService {
         return this.kongFeignService.add(uri(systemProfile, String.format(PLUGIN_SERVICE_URI, serviceId)), plugin);
     }
 
-    public Plugin addByConsumer(SystemProfile systemProfile, String consumerId, Plugin plugin) throws URISyntaxException {
+    public Plugin addByConsumer(SystemProfile systemProfile, String consumerId, Plugin plugin)
+            throws URISyntaxException {
         return this.kongFeignService.add(uri(systemProfile, String.format(PLUGIN_CONSUMER_URI, consumerId)), plugin);
     }
 

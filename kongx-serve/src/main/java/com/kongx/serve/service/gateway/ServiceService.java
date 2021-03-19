@@ -2,6 +2,7 @@ package com.kongx.serve.service.gateway;
 
 import com.kongx.common.cache.CacheResults;
 import com.kongx.serve.entity.gateway.KongEntity;
+import com.kongx.serve.entity.gateway.PluginVO;
 import com.kongx.serve.entity.gateway.Service;
 import com.kongx.serve.entity.system.RoleServiceEntity;
 import com.kongx.serve.entity.system.SystemProfile;
@@ -21,8 +22,6 @@ import org.springframework.context.annotation.Import;
 
 import java.net.*;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,7 +31,6 @@ import java.util.Optional;
 public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
     private static final String CACHE_SERVICES_KEY = "LISTS";
     private static final String SERVICE_URI = "/services";
-    private static final String SERVICE_URI_QUERY_1000 = "/services?size=1000";//应该够了
     private static final String SERVICE_URI_ID = "/services/%s";
     private static final String SERVICE_ROUTE_URI_ID = "/routes/%s/service";
     private static final String SERVICE_PLUGIN_URI_ID = "/plugins/%s/service";
@@ -154,19 +152,20 @@ public class ServiceService extends AbstractCacheService<KongEntity<Service>> {
 
     @Override
     protected CacheResults<KongEntity<Service>> loadFromClient(KongCacheKey key) throws URISyntaxException {
-        log.info("Loading Services {} from kong client!", key);
-        KongEntity<Service> kongEntity =
-                this.kongFeignService.findAll(uri(key.getSystemProfile(), SERVICE_URI_QUERY_1000));
-        List<Service> kongServices = kongEntity.getData();
-//        Collections.sort(kongServices, new Comparator<Service>() {
-//            @Override
-//            public int compare(Service o1, Service o2) {
-//                return o1.getName().compareToIgnoreCase(o2.getName());
-//            }
-//        });
-        kongEntity.setData(kongServices);
+        KongEntity<Service> allPlugInEntities = new KongEntity<>();
+        boolean hasMore = true;
+        String pluginUrl = SERVICE_URI;
+        while (hasMore) {
+            KongEntity<Service> plugins = this.kongFeignService.findAll(uri(key.getSystemProfile(), pluginUrl));
+            //最后一页的next值不变
+            if (plugins == null || StringUtils.isBlank(plugins.getNext())) {
+                hasMore = false;
+            }
+            allPlugInEntities.getData().addAll(plugins.getData());
+            pluginUrl = plugins.getNext();
+        }
         CacheResults<KongEntity<Service>> cacheResults = new CacheResults();
-        cacheResults.setData(kongEntity);
+        cacheResults.setData(allPlugInEntities);
         return cacheResults;
     }
 
