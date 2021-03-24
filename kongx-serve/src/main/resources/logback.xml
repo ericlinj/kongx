@@ -7,7 +7,7 @@
 
     <!-- 设置日志输出根目录 -->
     <property name="prjName" value="kongx"/>
-    <property name="log.dir" value="logs"/>
+    <property name="log.dir" value="/data/t3-logs/kongx"/>
     <property name="encoding" value="UTF-8"/>
 
     <property name="normal-pattern"
