@@ -48,8 +48,9 @@ public abstract class AbstractCacheService<T> {
         KongCacheKey kongCacheKey = new KongCacheKey();
         StringBuilder builder = new StringBuilder();
         builder.append(prefix).append(":").append(key).append(":");
-        if (systemProfile != null)
+        if (systemProfile != null){
             builder.append(systemProfile.getProfile());
+        }
         kongCacheKey.setKey(builder.toString());
         kongCacheKey.setSystemProfile(systemProfile);
         return kongCacheKey;
