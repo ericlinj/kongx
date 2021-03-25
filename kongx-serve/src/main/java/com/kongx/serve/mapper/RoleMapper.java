@@ -54,8 +54,8 @@ public interface RoleMapper {
     @Delete("delete from kongx_system_role_function where role_id=#{id}")
     int deleteRoleMenu(int id);
 
-    @Delete("delete from kongx_system_role_service where role_id=#{id}")
-    int deleteRoleService(int id);
+    @Delete("delete from kongx_system_role_service where role_id=#{id} and profile=#{profile}")
+    int deleteRoleService(int id, String profile);
 
     @Insert({"<script>",
             "insert into kongx_system_role_function(role_id,function_id,half_checked) values",

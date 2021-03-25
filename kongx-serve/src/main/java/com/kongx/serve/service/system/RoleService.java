@@ -10,6 +10,7 @@ import com.kongx.serve.entity.system.SystemRole;
 import com.kongx.serve.entity.system.SystemRoleFunction;
 import com.kongx.serve.mapper.RoleMapper;
 import com.kongx.serve.service.IBaseService;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -50,23 +51,25 @@ public class RoleService implements IBaseService<SystemRole, Integer> {
      * @return
      */
     public Optional updateRoleService(RoleServiceReq roleServiceParas) {
-        int roleId = roleServiceParas.getSystemRole().getId();
-        this.roleMapper.deleteRoleService(roleId);
-        List<RoleServiceEntity> roleServiceEntries = new ArrayList<>();
-        Map<String, List<RoleServiceEntity>> rsMap = roleServiceParas.getRoleServiceEntitiesMap();
-        if (rsMap != null && !rsMap.isEmpty()) {
-            for (String profile : rsMap.keySet()) {
-                List<RoleServiceEntity> rslist = rsMap.get(profile);
-                if (rslist != null && rslist.size() > 0) {
-                    for (RoleServiceEntity sItem : rslist) {
-                        sItem.setRoleId(roleId);
-                        sItem.setProfile(profile);
-                        roleServiceEntries.add(sItem);
-                    }
-                }
+        if (roleServiceParas.getRoleId() != null && StringUtils.isNotBlank(roleServiceParas.getProfile())
+                && roleServiceParas.getServiceList() != null && roleServiceParas.getServiceList().size() > 0) {
+            long roleId = roleServiceParas.getRoleId();
+            String profile = roleServiceParas.getProfile();
+            this.roleMapper.deleteRoleService(Integer.parseInt(roleId + ""), profile);
+            List<RoleServiceEntity> roleServiceEntries = new ArrayList<>();
+
+            for(String ss:roleServiceParas.getServiceList()){
+                RoleServiceEntity roleservice = new RoleServiceEntity();
+                roleservice.setRoleId(Integer.parseInt(roleId+""));
+                roleservice.setService(ss);
+                roleservice.setProfile(profile);
+
+                roleServiceEntries.add(roleservice);
             }
+
+            return Optional.ofNullable(this.roleMapper.batchInsertRoleService(roleServiceEntries));
         }
-        return Optional.ofNullable(this.roleMapper.batchInsertRoleService(roleServiceEntries));
+        return null;
     }
 
     public Optional findMenuByRoleId(Integer roleId) {
@@ -106,7 +109,7 @@ public class RoleService implements IBaseService<SystemRole, Integer> {
         this.roleMapper.insert(entity);
     }
 
-    public void addRoleService(Integer roleId,String service,String profile) {
+    public void addRoleService(Integer roleId, String service, String profile) {
         RoleServiceEntity roleServiceEntity = new RoleServiceEntity();
         roleServiceEntity.setRoleId(roleId);
         roleServiceEntity.setService(service);
@@ -134,6 +137,6 @@ public class RoleService implements IBaseService<SystemRole, Integer> {
     }
 
     public void removeRoleService(Integer roleId, String serviceName, String profile) {
-        this.roleMapper.removeRoleService(roleId,serviceName,profile);
+        this.roleMapper.removeRoleService(roleId, serviceName, profile);
     }
 }
